@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: [],
+  transpilePackages: ["@forestea/db"],
   outputFileTracingIncludes: {
-    "/**": ["../../packages/db/**/*", "./node_modules/@forestea/db/**/*"],
+    "/**": ["./node_modules/@forestea/db/**/*"],
   },
 };
 
