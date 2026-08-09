@@ -3,24 +3,16 @@ import { Suspense } from "react";
 
 export const metadata = { title: "Reset Password — Forestea" };
 
-function ResetPasswordContent() {
-  // Get token from URL search params
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    return <ResetPasswordForm token={token} />;
-  }
-  return <ResetPasswordForm token={null} />;
+interface PageProps {
+  searchParams: Promise<{ token?: string }>;
 }
 
-export default function ResetPasswordPage({
-  searchParams,
-}: {
-  searchParams: { token?: string };
-}) {
+export default async function ResetPasswordPage({ searchParams }: PageProps) {
+  const { token } = await searchParams;
+
   return (
     <Suspense fallback={null}>
-      <ResetPasswordForm token={searchParams.token ?? null} />
+      <ResetPasswordForm token={token ?? null} />
     </Suspense>
   );
 }
