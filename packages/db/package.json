@@ -1,0 +1,23 @@
+{
+  "name": "@forestea/db",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "generate": "node ./scripts/run-with-api-env.cjs prisma generate",
+    "push": "node ./scripts/run-with-api-env.cjs prisma db push",
+    "studio": "node ./scripts/run-with-api-env.cjs prisma studio",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "dotenv": "^16.5.0",
+    "prisma": "^6.8.2",
+    "typescript": "^5.8.3"
+  }
+}

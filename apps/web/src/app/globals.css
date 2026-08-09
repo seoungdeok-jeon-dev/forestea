@@ -1,0 +1,279 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand palette — fixed in both light & dark (used for buttons, footer,
+     accents, on-photo text). */
+  --color-forest-950: #0f1a14;
+  --color-forest-900: #1a2e22;
+  --color-forest-800: #243d2e;
+  --color-forest-700: #2f523c;
+  --color-forest-600: #3d6b4f;
+  --color-forest-500: #4d8462;
+  --color-forest-400: #6ba382;
+  --color-forest-300: #94c4a8;
+  --color-moss-200: #c8dccf;
+  --color-moss-100: #e4efe8;
+  --color-cream-50: #ffffff;
+  --color-bark-800: #3d2e24;
+  --color-bark-600: #6b5344;
+
+  /* Semantic tokens — flip with color scheme (see dark override below). */
+  --color-surface: #ffffff;
+  --color-card: #ffffff;
+  --color-subtle: #eef3ee;
+  --color-field: #f1f5f1;
+  --color-line: rgba(20, 40, 30, 0.1);
+  --color-ink: #16271d;
+  --color-ink-soft: #3d6b4f;
+  --color-ink-muted: #5f7d6b;
+  --color-accent: #243d2e;
+  --color-accent-hover: #2f523c;
+  --color-on-accent: #ffffff;
+
+  --font-display: "Georgia", "Times New Roman", serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: #0e120f;
+    --color-card: #161d18;
+    --color-subtle: #1c2620;
+    --color-field: rgba(255, 255, 255, 0.06);
+    --color-line: rgba(255, 255, 255, 0.12);
+    --color-ink: #e9efe9;
+    --color-ink-soft: #a6bcae;
+    --color-ink-muted: #7d9385;
+    --color-accent: #3d6b4f;
+    --color-accent-hover: #4d8462;
+    --color-on-accent: #f3f8f3;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Clover iframe fills container; vertical centering is handled by the input
+   line-height passed to elements.create() (see clover-payment-fields). */
+.clover-field {
+  display: flex;
+  align-items: stretch;
+  height: 3rem;
+  overflow: hidden;
+  padding: 0 0.875rem;
+}
+
+.clover-field iframe {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: none !important;
+}
+
+.clover-field > div {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* Top loading bar — NProgress / Google-style */
+.top-progress-bar {
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes top-progress-peg-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.top-progress-peg {
+  animation: top-progress-peg-pulse 1s ease-in-out infinite;
+}
+
+/* Cart add feedback */
+@keyframes cart-badge-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.45);
+  }
+  70% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-cart-badge {
+  animation: cart-badge-pop 0.55s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes cart-card-flash {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-cart-card {
+  animation: cart-card-flash 0.55s ease-out;
+}
+
+@keyframes cart-button-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-cart-button {
+  animation: cart-button-pop 0.4s ease-out;
+}
+
+@keyframes cart-line-in {
+  0% {
+    opacity: 0.6;
+    transform: translateX(-6px);
+    background-color: color-mix(in srgb, var(--color-moss-100) 80%, transparent);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    background-color: transparent;
+  }
+}
+
+.animate-cart-line {
+  animation: cart-line-in 0.5s ease-out;
+  border-radius: 0.5rem;
+  margin: -0.25rem -0.5rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Apple-style scroll showcase — full-viewport snap panels */
+.scroll-showcase {
+  scroll-behavior: smooth;
+}
+
+.scroll-showcase-panel {
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+.scroll-showcase-img {
+  animation: scroll-showcase-zoom 14s ease-out both;
+}
+
+@keyframes scroll-showcase-zoom {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes scroll-showcase-hint {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scaleY(0.6);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scaleY(1);
+  }
+}
+
+.scroll-showcase-hint {
+  transform-origin: top;
+  animation: scroll-showcase-hint 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-showcase {
+    scroll-behavior: auto;
+  }
+  .scroll-showcase-img,
+  .scroll-showcase-hint {
+    animation: none;
+  }
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Centered logo loader (route loading screen) */
+@keyframes logo-breathe {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes logo-ring {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+.logo-loader {
+  animation: logo-breathe 1.5s ease-in-out infinite;
+}
+
+.logo-loader-ring {
+  animation: logo-ring 1.5s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-loader {
+    animation: none;
+  }
+  .logo-loader-ring {
+    display: none;
+  }
+}

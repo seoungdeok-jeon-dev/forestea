@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Clover OAuth v2 tokens per merchant (single row for Forestea cafe)
+model CloverAuth {
+  merchantId            String   @id @map("merchant_id")
+  accessToken           String   @map("access_token") @db.Text
+  refreshToken          String   @map("refresh_token") @db.Text
+  accessTokenExpiresAt  DateTime @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("clover_auth")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  idempotencyKey  String?     @unique @map("idempotency_key")
+  cloverOrderId   String?     @unique
+  cloverChargeId  String?     @unique
+  status          OrderStatus @default(PENDING)
+  userId          String?     @map("user_id")
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerName    String?
+  customerEmail   String?
+  customerPhone   String?
+  pickupNote      String?
+  subtotalCents   Int         @default(0)
+  taxCents        Int         @default(0)
+  totalCents      Int         @default(0)
+  currency        String      @default("usd")
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId])
+}
+
+model OrderItem {
+  id             String @id @default(cuid())
+  orderId        String
+  order          Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  cloverItemId   String
+  name           String
+  quantity       Int    @default(1)
+  unitPriceCents Int
+  modifiers      Json?
+}
+
+enum OrderStatus {
+  PENDING
+  CHECKOUT
+  PAID
+  FAILED
+  CANCELLED
+}
+
+/// Customer account (email/password + social via Auth.js)
+model User {
+  id                 String     @id @default(cuid())
+  name               String?
+  email              String?    @unique
+  emailVerified      DateTime?  @map("email_verified")
+  image              String?
+  passwordHash       String?    @map("password_hash")
+  role               UserRole   @default(CUSTOMER)
+  resetToken         String?    @unique @map("reset_token")
+  resetTokenExpiry   DateTime?  @map("reset_token_expiry")
+  accounts           Account[]
+  sessions           Session[]
+  favorites          Favorite[]
+  orders             Order[]
+  posts              Post[]
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+/// Auth.js OAuth account link (Google, etc.)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+/// Auth.js database session (used for OAuth; credentials use JWT)
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+/// Per-user favorite Clover menu item
+model Favorite {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cloverItemId String   @map("clover_item_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, cloverItemId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+/// New-menu / announcement posts authored by admins
+model Post {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String?
+  body        String    @db.Text
+  coverImage  String?   @map("cover_image")
+  type        PostType  @default(ANNOUNCEMENT)
+  published   Boolean   @default(false)
+  publishedAt DateTime? @map("published_at")
+  authorId    String?   @map("author_id")
+  author      User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([type, published])
+  @@map("posts")
+}
+
+enum PostType {
+  NEW_MENU
+  ANNOUNCEMENT
+}

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(DATABASE_URL=\"postgresql://forestea:forestea@localhost:5432/forestea\" npx prisma db push)",
+      "Bash(DATABASE_URL=\"postgresql://forestea:forestea@localhost:5432/forestea\" npx prisma db push --accept-data-loss)",
+      "Bash(psql:*)",
+      "WebFetch(domain:docs.clover.com)",
+      "WebFetch(domain:help.clover.com)",
+      "Bash(mv .env.sandbox .env.development)",
+      "Bash(mv .env.prod .env.production)"
+    ]
+  }
+}
