@@ -20,10 +20,15 @@ export async function internalApiFetch(
     throw new Error("INTERNAL_API_SECRET is not configured on the web server.");
   }
 
+  // Fastify rejects an empty body when Content-Type is application/json
+  // (FST_ERR_CTP_EMPTY_JSON_BODY), so only declare it when a body is sent.
+  const jsonHeader =
+    init?.body == null ? {} : { "Content-Type": "application/json" };
+
   return fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...jsonHeader,
       ...init?.headers,
       "x-internal-secret": secret,
     },

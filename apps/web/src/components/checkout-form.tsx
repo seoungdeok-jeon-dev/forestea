@@ -208,6 +208,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
       <form
         id="checkout-form"
         onSubmit={handleSubmit}
+        autoComplete="off"
         className="grid gap-10 pb-28 lg:grid-cols-[1fr_minmax(320px,380px)] lg:gap-14 lg:pb-12"
       >
         {/* Form column */}
@@ -224,7 +225,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
                 value={details.customerName}
                 onChange={(e) => patch({ customerName: e.target.value })}
                 className={inputClass}
-                autoComplete="name"
+                autoComplete="off"
               />
               <input
                 type="email"
@@ -232,7 +233,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
                 value={details.customerEmail}
                 onChange={(e) => patch({ customerEmail: e.target.value })}
                 className={inputClass}
-                autoComplete="email"
+                autoComplete="off"
               />
               <input
                 type="tel"
@@ -240,7 +241,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
                 value={details.customerPhone}
                 onChange={(e) => patch({ customerPhone: e.target.value })}
                 className={inputClass}
-                autoComplete="tel"
+                autoComplete="off"
               />
             </div>
           </section>
@@ -258,7 +259,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
                 value={details.streetAddress}
                 onChange={(e) => patch({ streetAddress: e.target.value })}
                 className={inputClass}
-                autoComplete="street-address"
+                autoComplete="off"
               />
               <div className="grid grid-cols-2 gap-3">
                 <input
@@ -267,7 +268,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
                   value={details.city}
                   onChange={(e) => patch({ city: e.target.value })}
                   className={inputClass}
-                  autoComplete="address-level2"
+                  autoComplete="off"
                 />
                 <input
                   type="text"
@@ -275,7 +276,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
                   value={details.state}
                   onChange={(e) => patch({ state: e.target.value })}
                   className={inputClass}
-                  autoComplete="address-level1"
+                  autoComplete="off"
                 />
               </div>
               <input
@@ -284,7 +285,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
                 value={details.postalCode}
                 onChange={(e) => patch({ postalCode: e.target.value })}
                 className={inputClass}
-                autoComplete="postal-code"
+                autoComplete="off"
               />
               <textarea
                 placeholder="Pickup notes (optional)"

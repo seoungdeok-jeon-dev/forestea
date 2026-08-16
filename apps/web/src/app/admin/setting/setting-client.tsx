@@ -20,12 +20,18 @@ export function SettingContent() {
   const [authStatus, setAuthStatus] = useState<CloverAuthStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectError, setDisconnectError] = useState<string | null>(null);
 
   async function handleDisconnect() {
     setDisconnecting(true);
+    setDisconnectError(null);
     try {
       const next = await disconnectClover();
       setAuthStatus(next);
+    } catch (err) {
+      setDisconnectError(
+        err instanceof Error ? err.message : "Could not disconnect Clover",
+      );
     } finally {
       setDisconnecting(false);
     }
@@ -125,7 +131,10 @@ export function SettingContent() {
           {authStatus?.connected && authStatus.accessTokenExpiresAt && (
             <p>
               <span className="text-ink-soft">Access token expires:</span>{" "}
-              {new Date(authStatus.accessTokenExpiresAt).toLocaleString()}
+              {new Date(authStatus.accessTokenExpiresAt).toLocaleString("en-US", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
               {authStatus.accessTokenExpired ? " (will auto-refresh)" : ""}
             </p>
           )}
@@ -152,6 +161,11 @@ export function SettingContent() {
                   {disconnecting ? "Disconnecting…" : "Disconnect"}
                 </button>
               </div>
+              {disconnectError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
+                  {disconnectError}
+                </p>
+              )}
             </div>
           ) : connectUrl ? (
             <a
@@ -168,19 +182,6 @@ export function SettingContent() {
           )}
         </div>
       )}
-
-      <div className="mt-8 space-y-2 text-xs text-ink-muted">
-        <p>
-          Clover Developer Dashboard → Site URL / Redirect URI:{" "}
-          <code className="rounded bg-subtle px-1">http://localhost:4000/auth</code>
-        </p>
-        <p>
-          For production, use{" "}
-          <code className="rounded bg-subtle px-1">www.clover.com</code> for OAuth (not{" "}
-          <code className="rounded bg-subtle px-1">apisandbox</code>).
-          Always connect through this page. Authorization codes are single-use only.
-        </p>
-      </div>
     </div>
   );
 }

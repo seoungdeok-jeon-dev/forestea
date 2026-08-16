@@ -69,7 +69,7 @@ function validateEnv() {
   if (!secret || secret.length < 16) {
     throw new Error(
       "INTERNAL_API_SECRET is required (min 16 chars) and must match the web app. " +
-        "Add it to the API env file (.env.sandbox / .env.prod).",
+        "Add it to the API env file (.env.development / .env.production).",
     );
   }
 }

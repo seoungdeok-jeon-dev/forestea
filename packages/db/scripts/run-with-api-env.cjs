@@ -3,10 +3,15 @@ const { execSync } = require("child_process");
 const { config } = require("dotenv");
 
 const apiDir = path.resolve(__dirname, "../../../apps/api");
-const cloverEnv = process.env.CLOVER_ENV === "prod" ? "prod" : "sandbox";
+// Keep in sync with apps/api/src/load-env.ts:
+// NODE_ENV=production (or CLOVER_ENV=prod) → .env.production, otherwise .env.development
+const envName =
+  process.env.NODE_ENV === "production" || process.env.CLOVER_ENV === "prod"
+    ? "production"
+    : "development";
 
 // Env-specific file wins; .env holds shared fallbacks (dotenv never overrides).
-const candidates = [`.env.${cloverEnv}`, ".env"];
+const candidates = [`.env.${envName}`, ".env"];
 let anyLoaded = false;
 for (const file of candidates) {
   const loaded = config({ path: path.join(apiDir, file) });

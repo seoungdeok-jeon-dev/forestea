@@ -49,7 +49,12 @@ export async function getCloverStatus(): Promise<CloverAuthStatus> {
 export async function disconnectClover(): Promise<CloverAuthStatus> {
   return guarded(async () => {
     await requireAdmin();
-    await internalApiFetch("/auth/disconnect", { method: "POST" });
+    const disconnectRes = await internalApiFetch("/auth/disconnect", {
+      method: "POST",
+    });
+    if (!disconnectRes.ok) {
+      throw new Error(`Disconnect failed (${disconnectRes.status})`);
+    }
     const res = await internalApiFetch("/auth/status");
     if (!res.ok) {
       return { appConfigured: false, connected: false };

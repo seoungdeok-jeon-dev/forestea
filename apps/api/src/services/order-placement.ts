@@ -1,6 +1,7 @@
 import { prisma, Prisma } from "@forestea/db";
 import { withClover } from "./clover-runtime.js";
 import { resolvePricedLineItems, type CartLineInput } from "./menu-pricing.js";
+import { sendOrderNotifications } from "./order-notifications.js";
 
 export interface PlaceOrderInput {
   idempotencyKey: string;
@@ -116,6 +117,8 @@ export async function placePaidOrder(
     });
   }
 
+  let result: PlaceOrderResult;
+
   try {
     const { result: payment } = await withClover(async (clover) => {
       const atomicOrder = await clover.createAtomicOrder(priced.lineItems);
@@ -139,7 +142,7 @@ export async function placePaidOrder(
       },
     });
 
-    return {
+    result = {
       success: payment.charge.paid,
       order: {
         id: updated.id,
@@ -159,4 +162,12 @@ export async function placePaidOrder(
     });
     throw err;
   }
+
+  // Runs outside the block above so a notification problem can never mark a
+  // paid order as FAILED.
+  if (result.success) {
+    await sendOrderNotifications(result.order.id);
+  }
+
+  return result;
 }

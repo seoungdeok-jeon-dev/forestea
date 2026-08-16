@@ -27,7 +27,25 @@ export default function RootLayout({
                   <main className="flex flex-1 flex-col">{children}</main>
                   <footer className="border-t border-forest-800/10 bg-forest-900 py-12 text-center text-sm text-moss-200">
                     <p className="font-display text-lg text-cream-50">Forestea</p>
-                    <p className="mt-2">15127 Main St E, Ste 102, Sumner, WA 98390 · Open daily 10:30am–9pm</p>
+                    <p className="mt-2">
+                      15127 Main St E, Ste 102, Sumner, WA 98390 · Open daily
+                      10:30am–9pm
+                    </p>
+                    <p className="mt-4 flex items-center justify-center gap-4 text-xs text-moss-200/80">
+                      <a
+                        href="/privacy"
+                        className="transition hover:text-cream-50"
+                      >
+                        Privacy Policy
+                      </a>
+                      <span aria-hidden="true">·</span>
+                      <a
+                        href="/terms"
+                        className="transition hover:text-cream-50"
+                      >
+                        Terms of Service
+                      </a>
+                    </p>
                   </footer>
                 </CartProvider>
               </ProgressProvider>
