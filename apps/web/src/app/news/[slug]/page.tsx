@@ -24,43 +24,55 @@ export default async function NewsDetailPage({ params }: PageProps) {
     : null;
 
   return (
-    <article className="mx-auto w-full max-w-[720px] px-5 pb-20 pt-10 sm:px-8 sm:pt-14 md:pb-28 md:pt-16">
-      <Link
-        href="/news"
-        className="text-[0.8rem] font-medium tracking-[0.04em] text-ink/70 transition-colors hover:text-ink"
-      >
-        ← News
-      </Link>
+    <article className="pb-24 md:pb-32">
+      <div className="mx-auto w-full max-w-[720px] px-5 pt-10 sm:px-8 sm:pt-14 md:pt-16">
+        <Link
+          href="/news"
+          className="text-[0.8rem] font-medium tracking-[0.06em] text-ink/55 transition-colors hover:text-ink"
+        >
+          ← News
+        </Link>
 
-      <header className="mt-8 md:mt-10">
-        <p className="text-[0.7rem] font-medium tracking-[0.14em] text-ink-muted">
-          {dateLabel ? `${typeLabel} · ${dateLabel}` : typeLabel}
-        </p>
-        <h1 className="font-display mt-3 text-[clamp(2.25rem,5vw,3.5rem)] leading-[1.02] tracking-[-0.035em] text-ink">
-          {post.title}
-        </h1>
-      </header>
-
-      {post.coverImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={post.coverImage}
-          alt=""
-          className="mt-10 aspect-[16/10] w-full rounded-[1.25rem] object-cover md:mt-12"
-        />
-      ) : null}
-
-      <div className="mt-10 whitespace-pre-wrap text-[1.05rem] leading-[1.75] text-ink-soft md:mt-12">
-        {post.body}
+        <header className="mt-10 md:mt-12">
+          <p className="text-[0.7rem] font-medium tracking-[0.18em] text-ink-muted">
+            {dateLabel ? `${typeLabel} · ${dateLabel}` : typeLabel}
+          </p>
+          <h1 className="font-display mt-4 text-[clamp(2.35rem,5.5vw,3.75rem)] leading-[1.02] tracking-[-0.035em] text-ink">
+            {post.title}
+          </h1>
+        </header>
       </div>
 
-      <div className="mt-14 border-t border-black/5 pt-8">
-        <Link
-          href="/menu"
-          className="text-[0.8rem] font-medium tracking-[0.04em] text-ink/70 transition-colors hover:text-ink"
-        >
-          View menu →
-        </Link>
+      {post.coverImage ? (
+        <div className="mx-auto mt-10 w-full max-w-[1100px] px-5 sm:px-8 md:mt-14">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={post.coverImage}
+            alt=""
+            className="aspect-[16/9] w-full object-cover md:aspect-[2/1]"
+          />
+        </div>
+      ) : null}
+
+      <div className="mx-auto mt-10 w-full max-w-[720px] px-5 sm:px-8 md:mt-14">
+        <div className="whitespace-pre-wrap text-[1.08rem] leading-[1.8] text-ink-soft">
+          {post.body}
+        </div>
+
+        <div className="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-black/5 pt-8">
+          <Link
+            href="/news"
+            className="text-[0.8rem] font-medium tracking-[0.06em] text-ink/55 transition-colors hover:text-ink"
+          >
+            ← All news
+          </Link>
+          <Link
+            href="/menu"
+            className="text-[0.8rem] font-medium tracking-[0.06em] text-ink/55 transition-colors hover:text-ink"
+          >
+            View menu →
+          </Link>
+        </div>
       </div>
     </article>
   );
