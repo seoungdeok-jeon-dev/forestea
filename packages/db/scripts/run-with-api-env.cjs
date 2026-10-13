@@ -4,14 +4,9 @@ const { config } = require("dotenv");
 
 const apiDir = path.resolve(__dirname, "../../../apps/api");
 // Keep in sync with apps/api/src/load-env.ts:
-// NODE_ENV=production (or CLOVER_ENV=prod) → .env.production, otherwise .env.development
-const envName =
-  process.env.NODE_ENV === "production" || process.env.CLOVER_ENV === "prod"
-    ? "production"
-    : "development";
-
-// Env-specific file wins; .env holds shared fallbacks (dotenv never overrides).
-const candidates = [`.env.${envName}`, ".env"];
+// Local → .env.local. Deployed DB URLs come from Railway/process.env.
+// apps/api/.env.production is a checklist only (no secrets).
+const candidates = [".env.local", ".env"];
 let anyLoaded = false;
 for (const file of candidates) {
   const loaded = config({ path: path.join(apiDir, file) });

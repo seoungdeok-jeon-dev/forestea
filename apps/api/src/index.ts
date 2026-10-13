@@ -1,25 +1,21 @@
 import "./load-env.js";
 import cors from "@fastify/cors";
-import { getCloverAppConfig } from "@forestea/clover";
+import {
+  getMenuCatalog,
+  getMenuItemDetail,
+  quoteCheckout,
+} from "@forestea/menu";
 import { prisma } from "@forestea/db";
 import Fastify from "fastify";
 import { z } from "zod";
-import { registerAuthRoutes } from "./routes/auth.js";
 import {
-  formatCloverAuthHint,
-  withClover,
-} from "./services/clover-runtime.js";
+  confirmPaidOrder,
+  preparePaidOrder,
+} from "./services/order-placement.js";
 import {
-  getCachedMenu,
-  setCachedMenu,
-} from "./services/menu-cache.js";
-import {
-  getActiveCloverAuth,
-  getConnectedMerchantId,
-  resolveMerchantIdFromEnv,
-} from "./services/clover-token-service.js";
-import { resolvePricedLineItems } from "./services/menu-pricing.js";
-import { placePaidOrder } from "./services/order-placement.js";
+  getStripePublishableKey,
+  isStripeConfigured,
+} from "./services/stripe.js";
 import { requireInternal } from "./security.js";
 
 const cartLineInputSchema = z.object({
@@ -36,32 +32,31 @@ const checkoutSchema = z.object({
   pickupNote: z.string().optional(),
 });
 
-const placeOrderSchema = checkoutSchema.extend({
-  sourceToken: z.string().min(10),
+const prepareOrderSchema = checkoutSchema.extend({
   idempotencyKey: z.string().uuid(),
   userId: z.string().optional(),
 });
 
+const confirmOrderSchema = z.object({
+  orderId: z.string().min(1),
+});
+
 const port = Number(process.env.PORT ?? 4000);
 
-async function cloverErrorReply(
+function errorReply(
   reply: { status: (code: number) => { send: (body: unknown) => unknown } },
   err: unknown,
+  fallbackStatus = 502,
 ) {
-  const message = err instanceof Error ? err.message : "Clover API error";
-  const status = message.includes("429")
-    ? 429
-    : message.includes("401")
-      ? 401
-      : 502;
-  const auth = await getActiveCloverAuth();
-  const hint =
-    status === 429
-      ? "Clover sandbox rate limit. Wait 10–30s and retry; avoid spamming /menu and /auth/diagnostics."
-      : status === 401
-        ? formatCloverAuthHint(auth?.merchantId ?? null)
-        : undefined;
-  return reply.status(status).send({ error: message, hint });
+  const message = err instanceof Error ? err.message : "Request failed";
+  const status = message.includes("Unknown menu item")
+    ? 400
+    : message.includes("not found") || message.includes("Not found")
+      ? 404
+      : message.includes("STRIPE_SECRET_KEY")
+        ? 503
+        : fallbackStatus;
+  return reply.status(status).send({ error: message });
 }
 
 function validateEnv() {
@@ -69,7 +64,7 @@ function validateEnv() {
   if (!secret || secret.length < 16) {
     throw new Error(
       "INTERNAL_API_SECRET is required (min 16 chars) and must match the web app. " +
-        "Add it to the API env file (.env.development / .env.production).",
+        "Add it to apps/api/.env.local (local) or Railway env vars (production).",
     );
   }
 }
@@ -78,124 +73,92 @@ async function main() {
   validateEnv();
   const app = Fastify({ logger: true });
 
+  const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:3000";
+  const corsOrigins = Array.from(
+    new Set([
+      webOrigin,
+      "http://localhost:3000",
+      "https://localhost:3000",
+    ]),
+  );
+
   await app.register(cors, {
-    origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+    origin: corsOrigins,
     credentials: true,
   });
 
-  await registerAuthRoutes(app);
-
-  app.get("/health", async () => {
-    const appConfig = getCloverAppConfig();
-    const auth = await getActiveCloverAuth();
-    const envMerchantId = resolveMerchantIdFromEnv();
-
-    return {
-      ok: true,
-      cloverAppConfigured: Boolean(appConfig),
-      cloverConnected: Boolean(auth),
-      sandbox: appConfig?.sandbox ?? true,
-      merchantId: auth?.merchantId ?? null,
-      envMerchantId,
-      merchantIdMismatch: Boolean(
-        auth && envMerchantId && auth.merchantId !== envMerchantId,
-      ),
-    };
-  });
+  app.get("/health", async () => ({
+    ok: true,
+    payments: isStripeConfigured() ? "stripe" : "unconfigured",
+    stripeConfigured: isStripeConfigured(),
+  }));
 
   app.get("/menu/items/:itemId", async (request, reply) => {
     const { itemId } = request.params as { itemId: string };
-    try {
-      const { result } = await withClover((clover) => clover.getItem(itemId));
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Not found";
-      if (message.includes("not found")) {
-        return reply.status(404).send({ error: message });
-      }
-      return await cloverErrorReply(reply, err);
+    const item = getMenuItemDetail(itemId);
+    if (!item) {
+      return reply.status(404).send({ error: `Menu item not found: ${itemId}` });
     }
+    return item;
   });
 
-  app.get("/menu", async (request, reply) => {
-    try {
-      const auth = await getActiveCloverAuth();
-      if (auth) {
-        const cached = getCachedMenu(auth.merchantId);
-        if (cached) return cached;
-      }
+  app.get("/menu", async () => getMenuCatalog());
 
-      const { result, merchantId } = await withClover(async (clover) => {
-        const categories = await clover.getCategories();
-        const items = await clover.getItems();
-        return { categories, items };
-      });
-
-      setCachedMenu(merchantId, result);
-      return result;
-    } catch (err) {
-      return await cloverErrorReply(reply, err);
-    }
-  });
-
-  // Pure pricing quote: resolves server-side prices + tax via Clover. This is a
-  // read-only preview and intentionally does NOT persist an order — the order is
-  // only created at payment time (POST /orders) with an idempotency key.
   app.post("/checkout", async (request, reply) => {
     const parsed = checkoutSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
 
-    const { items } = parsed.data;
-
     try {
-      const { result } = await withClover(async (clover) => {
-        const lineItems = await resolvePricedLineItems(clover, items);
-        const totals = await clover.checkoutOrder(lineItems);
-        return totals;
-      });
-
-      return {
-        totals: {
-          subtotal: result.subtotal,
-          tax: result.tax,
-          total: result.total,
-        },
-        lineItems: result.lineItems,
-      };
+      const { totals, lineItems } = quoteCheckout(parsed.data.items);
+      return { totals, lineItems };
     } catch (err) {
-      return await cloverErrorReply(reply, err);
+      return errorReply(reply, err, 400);
     }
   });
 
-  app.post("/orders", { preHandler: requireInternal }, async (request, reply) => {
-    const parsed = placeOrderSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.flatten() });
-    }
+  app.post(
+    "/orders/prepare",
+    { preHandler: requireInternal },
+    async (request, reply) => {
+      const parsed = prepareOrderSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
 
-    const { items, sourceToken, idempotencyKey, ...customer } = parsed.data;
-    const clientIp =
-      (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
-      request.ip;
+      const { items, idempotencyKey, ...customer } = parsed.data;
 
-    try {
-      const result = await placePaidOrder({
-        idempotencyKey,
-        lineInputs: items,
-        sourceToken,
-        ...customer,
-        clientIp,
-      });
-      return result;
-    } catch (err) {
-      return await cloverErrorReply(reply, err);
-    }
-  });
+      try {
+        const result = await preparePaidOrder({
+          idempotencyKey,
+          lineInputs: items,
+          ...customer,
+        });
+        return result;
+      } catch (err) {
+        return errorReply(reply, err);
+      }
+    },
+  );
 
-  // Public capability-URL lookup for the order confirmation page. Only
-  // non-sensitive fields are returned — never customer name/email/phone.
+  app.post(
+    "/orders/confirm",
+    { preHandler: requireInternal },
+    async (request, reply) => {
+      const parsed = confirmOrderSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+
+      try {
+        return await confirmPaidOrder(parsed.data.orderId);
+      } catch (err) {
+        return errorReply(reply, err);
+      }
+    },
+  );
+
   app.get("/orders/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const order = await prisma.order.findUnique({
@@ -204,6 +167,7 @@ async function main() {
         id: true,
         status: true,
         cloverOrderId: true,
+        stripePaymentIntentId: true,
         subtotalCents: true,
         taxCents: true,
         totalCents: true,
@@ -226,46 +190,28 @@ async function main() {
     return order;
   });
 
-  app.get("/payments/config", async (_request, reply) => {
-    try {
-      const appConfig = getCloverAppConfig();
-      const auth = await getActiveCloverAuth();
-      const merchantId = auth?.merchantId ?? (await getConnectedMerchantId());
-      const demo = !appConfig || !merchantId || !auth;
-
-      let pakmsPublicKey: string | null = appConfig?.ecommerceApiKey ?? null;
-
-      if (!demo) {
-        try {
-          const { result } = await withClover((clover) =>
-            clover.getEcommerceApiKey(),
-          );
-          pakmsPublicKey = result;
-        } catch {
-          pakmsPublicKey = appConfig?.ecommerceApiKey ?? null;
-        }
-      }
-
-      const sdkUrl = appConfig?.sandbox
-        ? "https://checkout.sandbox.dev.clover.com/sdk.js"
-        : "https://checkout.clover.com/sdk.js";
-
-      return {
-        demo,
-        sandbox: appConfig?.sandbox ?? true,
-        merchantId,
-        pakmsPublicKey,
-        sdkUrl,
-        iframeReady: Boolean(!demo && pakmsPublicKey && merchantId),
-      };
-    } catch (err) {
-      return await cloverErrorReply(reply, err);
-    }
+  app.get("/payments/config", async () => {
+    const publishableKey = getStripePublishableKey();
+    const ready = isStripeConfigured();
+    return {
+      provider: "stripe" as const,
+      publishableKey,
+      ready,
+      // Kept for older clients that still read these fields.
+      demo: !ready,
+      sandbox: Boolean(publishableKey?.startsWith("pk_test_")),
+      iframeReady: ready,
+    };
   });
 
   try {
     await app.listen({ port, host: "0.0.0.0" });
     console.log(`Forestea API listening on http://localhost:${port}`);
+    if (!isStripeConfigured()) {
+      console.warn(
+        "Stripe is not configured — set STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY to accept payments.",
+      );
+    }
   } catch (err) {
     app.log.error(err);
     process.exit(1);

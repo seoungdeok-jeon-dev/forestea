@@ -1,64 +1,68 @@
 import { prisma, Prisma } from "@forestea/db";
-import { withClover } from "./clover-runtime.js";
-import { resolvePricedLineItems, type CartLineInput } from "./menu-pricing.js";
+import {
+  lineUnitCents,
+  quoteCheckout,
+  type CartLineInput,
+} from "@forestea/menu";
 import { sendOrderNotifications } from "./order-notifications.js";
+import { getStripe } from "./stripe.js";
 
-export interface PlaceOrderInput {
+export interface PrepareOrderInput {
   idempotencyKey: string;
   lineInputs: CartLineInput[];
-  sourceToken: string;
   userId?: string;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
   pickupNote?: string;
-  clientIp?: string;
 }
 
-export interface PlaceOrderResult {
+export interface PrepareOrderResult {
+  orderId: string;
+  clientSecret: string;
+  totals: { subtotal: number; tax: number; total: number };
+}
+
+export interface ConfirmOrderResult {
   success: boolean;
   order: {
     id: string;
-    cloverOrderId: string | null;
     status: string;
     totalCents: number;
+    stripePaymentIntentId: string | null;
   };
-  charge: { id: string; status: string };
 }
 
-function assertSourceToken(token: string): void {
-  if (!/^clv_[A-Za-z0-9]+/.test(token)) {
-    throw new Error("Invalid Clover payment token");
-  }
+function persistLineItems(
+  lineItems: ReturnType<typeof quoteCheckout>["lineItems"],
+) {
+  return lineItems.map((li) => ({
+    cloverItemId: li.itemId,
+    name: li.name,
+    quantity: li.quantity,
+    unitPriceCents: lineUnitCents(li),
+    modifiers: li.modifiers as unknown as Prisma.InputJsonValue,
+  }));
 }
 
-export async function placePaidOrder(
-  input: PlaceOrderInput,
-): Promise<PlaceOrderResult> {
-  assertSourceToken(input.sourceToken);
+/**
+ * Creates (or refreshes) a PENDING order and a Stripe PaymentIntent whose
+ * amount matches the server-side quote. The client confirms the PaymentIntent
+ * with Stripe.js, then calls confirmPaidOrder.
+ */
+export async function preparePaidOrder(
+  input: PrepareOrderInput,
+): Promise<PrepareOrderResult> {
+  const { lineItems, totals } = quoteCheckout(input.lineInputs);
+  const stripe = getStripe();
 
   const existing = await prisma.order.findUnique({
     where: { idempotencyKey: input.idempotencyKey },
   });
 
-  if (existing?.status === "PAID" && existing.cloverChargeId) {
-    return {
-      success: true,
-      order: {
-        id: existing.id,
-        cloverOrderId: existing.cloverOrderId,
-        status: existing.status,
-        totalCents: existing.totalCents,
-      },
-      charge: { id: existing.cloverChargeId, status: "succeeded" },
-    };
+  if (existing?.status === "PAID") {
+    throw new Error("This order was already paid. Start a new checkout.");
   }
-
-  const { result: priced } = await withClover(async (clover) => {
-    const lineItems = await resolvePricedLineItems(clover, input.lineInputs);
-    const checkout = await clover.checkoutOrder(lineItems);
-    return { lineItems, checkout };
-  });
 
   let order =
     existing ??
@@ -71,24 +75,14 @@ export async function placePaidOrder(
         customerEmail: input.customerEmail,
         customerPhone: input.customerPhone,
         pickupNote: input.pickupNote,
-        subtotalCents: priced.checkout.subtotal,
-        taxCents: priced.checkout.tax,
-        totalCents: priced.checkout.total,
-        items: {
-          create: priced.lineItems.map((li) => ({
-            cloverItemId: li.itemId,
-            name: li.name,
-            quantity: li.quantity,
-            unitPriceCents:
-              li.price +
-              (li.modifiers?.reduce((s, m) => s + m.price, 0) ?? 0),
-            modifiers: (li.modifiers ?? []) as unknown as Prisma.InputJsonValue,
-          })),
-        },
+        subtotalCents: totals.subtotal,
+        taxCents: totals.tax,
+        totalCents: totals.total,
+        items: { create: persistLineItems(lineItems) },
       },
     }));
 
-  if (existing && existing.status !== "PAID") {
+  if (existing) {
     await prisma.orderItem.deleteMany({ where: { orderId: order.id } });
     order = await prisma.order.update({
       where: { id: order.id },
@@ -99,75 +93,123 @@ export async function placePaidOrder(
         customerEmail: input.customerEmail,
         customerPhone: input.customerPhone,
         pickupNote: input.pickupNote,
-        subtotalCents: priced.checkout.subtotal,
-        taxCents: priced.checkout.tax,
-        totalCents: priced.checkout.total,
-        items: {
-          create: priced.lineItems.map((li) => ({
-            cloverItemId: li.itemId,
-            name: li.name,
-            quantity: li.quantity,
-            unitPriceCents:
-              li.price +
-              (li.modifiers?.reduce((s, m) => s + m.price, 0) ?? 0),
-            modifiers: (li.modifiers ?? []) as unknown as Prisma.InputJsonValue,
-          })),
-        },
+        subtotalCents: totals.subtotal,
+        taxCents: totals.tax,
+        totalCents: totals.total,
+        items: { create: persistLineItems(lineItems) },
       },
     });
   }
 
-  let result: PlaceOrderResult;
+  const metadata = {
+    orderId: order.id,
+    idempotencyKey: input.idempotencyKey,
+  };
 
-  try {
-    const { result: payment } = await withClover(async (clover) => {
-      const atomicOrder = await clover.createAtomicOrder(priced.lineItems);
-      const charge = await clover.createCharge(
-        priced.checkout.total,
-        input.sourceToken,
-        {
-          clientIp: input.clientIp,
-          idempotencyKey: input.idempotencyKey,
-        },
-      );
-      return { atomicOrder, charge };
-    });
-
-    const updated = await prisma.order.update({
+  let paymentIntent;
+  if (order.stripePaymentIntentId) {
+    paymentIntent = await stripe.paymentIntents.update(
+      order.stripePaymentIntentId,
+      {
+        amount: totals.total,
+        currency: "usd",
+        metadata,
+        receipt_email: input.customerEmail || undefined,
+      },
+    );
+  } else {
+    paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: totals.total,
+        currency: "usd",
+        automatic_payment_methods: { enabled: true },
+        metadata,
+        receipt_email: input.customerEmail || undefined,
+      },
+      { idempotencyKey: `pi-${input.idempotencyKey}` },
+    );
+    order = await prisma.order.update({
       where: { id: order.id },
-      data: {
-        status: payment.charge.paid ? "PAID" : "FAILED",
-        cloverOrderId: payment.atomicOrder.id,
-        cloverChargeId: payment.charge.id,
-      },
+      data: { stripePaymentIntentId: paymentIntent.id },
     });
+  }
 
-    result = {
-      success: payment.charge.paid,
+  if (!paymentIntent.client_secret) {
+    throw new Error("Stripe did not return a client secret");
+  }
+
+  return {
+    orderId: order.id,
+    clientSecret: paymentIntent.client_secret,
+    totals,
+  };
+}
+
+/**
+ * After the browser confirms the PaymentIntent, verify with Stripe and mark
+ * the order paid. Safe to call more than once.
+ */
+export async function confirmPaidOrder(
+  orderId: string,
+): Promise<ConfirmOrderResult> {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  if (order.status === "PAID") {
+    return {
+      success: true,
       order: {
-        id: updated.id,
-        cloverOrderId: updated.cloverOrderId,
-        status: updated.status,
-        totalCents: updated.totalCents,
-      },
-      charge: {
-        id: payment.charge.id,
-        status: payment.charge.status,
+        id: order.id,
+        status: order.status,
+        totalCents: order.totalCents,
+        stripePaymentIntentId: order.stripePaymentIntentId,
       },
     };
-  } catch (err) {
+  }
+
+  if (!order.stripePaymentIntentId) {
+    throw new Error("Order has no Stripe payment");
+  }
+
+  const stripe = getStripe();
+  const intent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId);
+
+  if (intent.status !== "succeeded") {
     await prisma.order.update({
       where: { id: order.id },
       data: { status: "FAILED" },
     });
-    throw err;
+    return {
+      success: false,
+      order: {
+        id: order.id,
+        status: "FAILED",
+        totalCents: order.totalCents,
+        stripePaymentIntentId: order.stripePaymentIntentId,
+      },
+    };
   }
 
-  // Runs outside the block above so a notification problem can never mark a
-  // paid order as FAILED.
-  if (result.success) {
-    await sendOrderNotifications(result.order.id);
+  if (intent.amount !== order.totalCents) {
+    throw new Error("Paid amount does not match order total");
   }
 
-  return result;
+  const updated = await prisma.order.update({
+    where: { id: order.id },
+    data: { status: "PAID" },
+  });
+
+  await sendOrderNotifications(updated.id);
+
+  return {
+    success: true,
+    order: {
+      id: updated.id,
+      status: updated.status,
+      totalCents: updated.totalCents,
+      stripePaymentIntentId: updated.stripePaymentIntentId,
+    },
+  };
 }

@@ -1,13 +1,16 @@
 "use client";
 
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CloverPaymentFields,
-  type CloverPaymentHandle,
-} from "@/components/clover-payment-fields";
+  StripePaymentFields,
+  type StripePaymentHandle,
+} from "@/components/stripe-payment-fields";
 import { CheckoutOrderView } from "@/components/checkout-order-view";
 import { useCart } from "@/context/cart-context";
+import { useProgress } from "@/context/progress-context";
 import {
   checkoutOrder,
   formatPrice,
@@ -16,8 +19,10 @@ import {
   type CheckoutTotals,
   type PaymentConfig,
 } from "@/lib/api";
-import { placeOrderAction } from "@/app/checkout/actions";
-import { cartLineTotal } from "@/lib/cart-utils";
+import {
+  confirmOrderAction,
+  preparePaymentAction,
+} from "@/app/checkout/actions";
 
 interface Details {
   customerName: string;
@@ -63,6 +68,26 @@ function formatPickupNote(d: Details): string | undefined {
   return lines.length > 0 ? lines.join("\n") : undefined;
 }
 
+function Spinner() {
+  return (
+    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
+  );
+}
+
 function SectionLabel({ step, title }: { step: number; title: string }) {
   return (
     <div className="mb-4 flex items-center gap-3">
@@ -74,10 +99,32 @@ function SectionLabel({ step, title }: { step: number; title: string }) {
   );
 }
 
-export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = {}) {
+let stripePromise: Promise<Stripe | null> | null = null;
+
+function getStripePromise(publishableKey: string) {
+  if (!stripePromise) {
+    stripePromise = loadStripe(publishableKey);
+  }
+  return stripePromise;
+}
+
+function checkoutKey(): string {
+  if (typeof window === "undefined") return crypto.randomUUID();
+  const existing = sessionStorage.getItem("forestea-checkout-key");
+  if (existing) return existing;
+  const next = crypto.randomUUID();
+  sessionStorage.setItem("forestea-checkout-key", next);
+  return next;
+}
+
+export function CheckoutForm({
+  initialName,
+  initialEmail,
+}: CheckoutFormProps = {}) {
   const router = useRouter();
   const { items, itemCount, clearCart } = useCart();
-  const cloverRef = useRef<CloverPaymentHandle>(null);
+  const { begin, end } = useProgress();
+  const paymentRef = useRef<StripePaymentHandle>(null);
 
   const [details, setDetails] = useState<Details>({
     ...EMPTY_DETAILS,
@@ -87,6 +134,11 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
   const [totals, setTotals] = useState<CheckoutTotals | null>(null);
   const [totalsLoading, setTotalsLoading] = useState(false);
+  const [totalsError, setTotalsError] = useState(false);
+  const [quoteAttempt, setQuoteAttempt] = useState(0);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [intentLoading, setIntentLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,22 +147,26 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
   }
 
   useEffect(() => {
+    if (!loading) return;
+    begin();
+    return end;
+  }, [loading, begin, end]);
+
+  useEffect(() => {
     getPaymentConfig()
       .then(setPaymentConfig)
       .catch(() =>
         setPaymentConfig({
+          provider: "stripe",
+          publishableKey: null,
+          ready: false,
           demo: true,
           sandbox: true,
-          merchantId: null,
-          pakmsPublicKey: null,
-          sdkUrl: "https://checkout.sandbox.dev.clover.com/sdk.js",
           iframeReady: false,
         }),
       );
   }, []);
 
-  // Pricing only depends on the cart contents — recompute (debounced) when the
-  // line items change, never on contact/billing keystrokes.
   const lineKey = useMemo(
     () =>
       items
@@ -132,12 +188,16 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
     }
     let cancelled = false;
     setTotalsLoading(true);
+    setTotalsError(false);
     const timer = setTimeout(async () => {
       try {
         const result = await checkoutOrder({ items: toCartLineInputs(items) });
         if (!cancelled) setTotals(result.totals);
       } catch {
-        if (!cancelled) setTotals(null);
+        if (!cancelled) {
+          setTotals(null);
+          setTotalsError(true);
+        }
       } finally {
         if (!cancelled) setTotalsLoading(false);
       }
@@ -146,9 +206,8 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
       cancelled = true;
       clearTimeout(timer);
     };
-    // lineKey captures the meaningful cart state; items ref is stable input.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineKey]);
+  }, [lineKey, quoteAttempt]);
 
   const contactValid =
     details.customerName.trim().length > 0 &&
@@ -161,47 +220,140 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
     details.state.trim().length >= 2 &&
     details.postalCode.trim().length >= 5;
 
-  const canPay =
-    contactValid && billingValid && Boolean(paymentConfig?.iframeReady) && !loading;
+  const totalsReady = totals !== null && !totalsLoading;
+  const paymentsReady = Boolean(paymentConfig?.ready && paymentConfig.publishableKey);
 
-  const displayTotal =
-    totals?.total ?? items.reduce((s, i) => s + cartLineTotal(i), 0);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!paymentConfig?.iframeReady) {
-      setError("Payment is not configured.");
+  // Create / refresh the PaymentIntent once we have a total and contact email
+  // (Stripe uses it for the receipt).
+  useEffect(() => {
+    if (!paymentsReady || !totalsReady || !contactValid || items.length === 0) {
       return;
     }
-    setLoading(true);
+
+    let cancelled = false;
+    setIntentLoading(true);
     setError(null);
-    try {
-      const sourceToken = await cloverRef.current!.createToken();
-      const result = await placeOrderAction({
+
+    const timer = setTimeout(async () => {
+      const result = await preparePaymentAction({
         items: toCartLineInputs(items),
-        sourceToken,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: checkoutKey(),
         customerName: details.customerName.trim(),
         customerEmail: details.customerEmail.trim(),
         customerPhone: details.customerPhone.trim(),
         pickupNote: formatPickupNote(details),
       });
-      if (result.success && result.order) {
-        clearCart();
-        router.push(`/order/confirmation?id=${result.order.id}`);
-      } else {
-        setError(result.error ?? "Payment was not completed. Please try again.");
+
+      if (cancelled) return;
+
+      if (!result.success || !result.clientSecret || !result.orderId) {
+        setClientSecret(null);
+        setOrderId(null);
+        setError(result.error ?? "Could not start payment.");
+        setIntentLoading(false);
+        return;
       }
+
+      setClientSecret(result.clientSecret);
+      setOrderId(result.orderId);
+      if (result.totals) setTotals(result.totals);
+      setIntentLoading(false);
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    lineKey,
+    totalsReady,
+    paymentsReady,
+    contactValid,
+    details.customerEmail,
+    details.customerName,
+    details.customerPhone,
+    details.streetAddress,
+    details.city,
+    details.state,
+    details.postalCode,
+    details.pickupNote,
+  ]);
+
+  const canPay =
+    contactValid &&
+    billingValid &&
+    paymentsReady &&
+    totalsReady &&
+    Boolean(clientSecret && orderId) &&
+    !intentLoading &&
+    !loading;
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!paymentsReady) {
+      setError("Payment is not configured. Add Stripe keys to the API env.");
+      return;
+    }
+    if (!totalsReady || !clientSecret || !orderId) {
+      setError("Please wait for your total to finish calculating.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await paymentRef.current!.confirm();
+      const confirmed = await confirmOrderAction(orderId);
+      if (confirmed.success && confirmed.order) {
+        clearCart();
+        sessionStorage.removeItem("forestea-checkout-key");
+        router.push(`/order/confirmation?id=${confirmed.order.id}`);
+        return;
+      }
+      setError(confirmed.error ?? "Payment was not completed. Please try again.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
 
   if (itemCount === 0) {
     return <CheckoutOrderView totals={totals} totalsLoading={totalsLoading} />;
   }
+
+  const paymentSection =
+    !paymentsReady ? (
+      <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        Stripe is not configured yet. Add{" "}
+        <code className="font-mono text-xs">STRIPE_SECRET_KEY</code> and{" "}
+        <code className="font-mono text-xs">STRIPE_PUBLISHABLE_KEY</code> to the
+        API environment, then restart the server.
+      </p>
+    ) : intentLoading || !clientSecret ? (
+      <p className="text-sm text-ink-muted">
+        {contactValid
+          ? "Preparing secure payment…"
+          : "Enter your contact details to unlock payment."}
+      </p>
+    ) : (
+      <Elements
+        stripe={getStripePromise(paymentConfig!.publishableKey!)}
+        options={{
+          clientSecret,
+          appearance: {
+            theme: "stripe",
+            variables: {
+              colorPrimary: "#243d2e",
+              colorBackground: "#ffffff",
+              colorText: "#16271d",
+              borderRadius: "12px",
+            },
+          },
+        }}
+      >
+        <StripePaymentFields ref={paymentRef} />
+      </Elements>
+    );
 
   return (
     <>
@@ -211,7 +363,6 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
         autoComplete="off"
         className="grid gap-10 pb-28 lg:grid-cols-[1fr_minmax(320px,380px)] lg:gap-14 lg:pb-12"
       >
-        {/* Form column */}
         <div className="order-2 space-y-12 lg:order-1">
           <section>
             <SectionLabel step={1} title="Pickup contact" />
@@ -299,11 +450,7 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
 
           <section>
             <SectionLabel step={3} title="Payment" />
-            {paymentConfig ? (
-              <CloverPaymentFields ref={cloverRef} config={paymentConfig} />
-            ) : (
-              <p className="text-sm text-ink-muted">Loading payment…</p>
-            )}
+            {paymentSection}
 
             {error ? (
               <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -311,44 +458,98 @@ export function CheckoutForm({ initialName, initialEmail }: CheckoutFormProps = 
               </p>
             ) : null}
 
+            {totalsError && !loading ? (
+              <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                We could not calculate your total right now.
+                <button
+                  type="button"
+                  onClick={() => setQuoteAttempt((n) => n + 1)}
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Try again
+                </button>
+              </p>
+            ) : null}
+
             <button
               type="submit"
               disabled={!canPay}
+              aria-busy={loading}
               className="mt-6 hidden w-full rounded-full bg-accent py-4 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-[0.99] disabled:opacity-40 lg:block"
             >
-              {loading ? "Processing…" : `Pay ${formatPrice(displayTotal)}`}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Spinner />
+                  Processing…
+                </span>
+              ) : totalsLoading || intentLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Spinner />
+                  Preparing…
+                </span>
+              ) : totals ? (
+                `Pay ${formatPrice(totals.total)}`
+              ) : (
+                "Total unavailable"
+              )}
             </button>
+
+            {loading ? (
+              <p
+                aria-live="polite"
+                className="mt-3 text-center text-xs text-ink-muted"
+              >
+                Confirming your payment — please keep this page open.
+              </p>
+            ) : null}
           </section>
         </div>
 
-        {/* Summary column */}
         <aside className="order-1 lg:order-2">
           <div className="lg:sticky lg:top-24">
-            <div className="rounded-3xl border border-line bg-card/60 p-6 lg:p-7">
+            <div className="rounded-3xl border border-line bg-card/60 p-5 sm:p-6 lg:p-7">
               <CheckoutOrderView totals={totals} totalsLoading={totalsLoading} />
             </div>
           </div>
         </aside>
       </form>
 
-      {/* Mobile sticky pay bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-6 py-4 backdrop-blur-md lg:hidden">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
               Total
             </p>
-            <p className="text-2xl font-semibold tabular-nums text-ink">
-              {formatPrice(displayTotal)}
-            </p>
+            {totalsLoading || intentLoading ? (
+              <p
+                aria-live="polite"
+                className="text-base font-medium text-ink-muted"
+              >
+                Preparing…
+              </p>
+            ) : totals ? (
+              <p className="text-2xl font-semibold tabular-nums text-ink">
+                {formatPrice(totals.total)}
+              </p>
+            ) : (
+              <p className="text-base font-medium text-ink-muted">Unavailable</p>
+            )}
           </div>
           <button
             type="submit"
             form="checkout-form"
             disabled={!canPay}
+            aria-busy={loading}
             className="shrink-0 rounded-full bg-accent px-8 py-4 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-[0.98] disabled:opacity-40"
           >
-            {loading ? "Processing…" : "Pay"}
+            {loading || totalsLoading || intentLoading ? (
+              <span className="flex items-center gap-2">
+                <Spinner />
+                {loading ? "Processing…" : "Preparing…"}
+              </span>
+            ) : (
+              "Pay"
+            )}
           </button>
         </div>
       </div>

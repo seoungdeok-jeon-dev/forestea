@@ -58,7 +58,7 @@ export function CheckoutOrderView({ totals, totalsLoading }: Props) {
               </p>
             </div>
 
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
               <div className="inline-flex items-center rounded-full border border-line bg-card">
                 <button
                   type="button"
@@ -68,12 +68,12 @@ export function CheckoutOrderView({ totals, totalsLoading }: Props) {
                       quantity: Math.max(1, item.quantity - 1),
                     })
                   }
-                  className="flex h-8 w-8 items-center justify-center rounded-l-full text-ink-soft hover:bg-subtle"
+                  className="flex h-10 w-10 items-center justify-center rounded-l-full text-ink-soft hover:bg-subtle"
                   aria-label="Decrease"
                 >
                   −
                 </button>
-                <span className="min-w-[1.75rem] text-center text-sm font-medium tabular-nums">
+                <span className="min-w-[2rem] text-center text-sm font-medium tabular-nums">
                   {item.quantity}
                 </span>
                 <button
@@ -84,7 +84,7 @@ export function CheckoutOrderView({ totals, totalsLoading }: Props) {
                       quantity: item.quantity + 1,
                     })
                   }
-                  className="flex h-8 w-8 items-center justify-center rounded-r-full text-ink-soft hover:bg-subtle"
+                  className="flex h-10 w-10 items-center justify-center rounded-r-full text-ink-soft hover:bg-subtle"
                   aria-label="Increase"
                 >
                   +
@@ -92,14 +92,14 @@ export function CheckoutOrderView({ totals, totalsLoading }: Props) {
               </div>
               <Link
                 href={`/menu/${item.itemId}?edit=${item.lineId}&from=cart`}
-                className="text-xs font-medium text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+                className="inline-flex min-h-[40px] items-center px-2 text-sm font-medium text-ink-soft underline-offset-4 hover:text-ink hover:underline"
               >
                 Edit
               </Link>
               <button
                 type="button"
                 onClick={() => removeLine(item.lineId)}
-                className="text-xs text-ink-muted hover:text-bark-600"
+                className="inline-flex min-h-[40px] items-center px-2 text-sm text-ink-muted hover:text-bark-600"
               >
                 Remove
               </button>
@@ -126,9 +126,15 @@ export function CheckoutOrderView({ totals, totalsLoading }: Props) {
         ) : null}
         <div className="flex justify-between pt-2 text-base font-semibold text-ink">
           <span>Total</span>
-          <span className="tabular-nums">
-            {formatPrice(totals?.total ?? subtotalCents)}
-          </span>
+          {totalsLoading ? (
+            <span aria-live="polite" className="font-medium text-ink-muted">
+              Calculating…
+            </span>
+          ) : totals ? (
+            <span className="tabular-nums">{formatPrice(totals.total)}</span>
+          ) : (
+            <span className="font-medium text-ink-muted">Unavailable</span>
+          )}
         </div>
       </div>
     </div>

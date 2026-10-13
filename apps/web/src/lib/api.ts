@@ -15,6 +15,8 @@ export interface MenuItem {
   description?: string;
   categoryIds?: string[];
   available?: boolean;
+  /** Optional local artwork path (catalog items include this). */
+  image?: string;
 }
 
 export interface MenuModifier {
@@ -53,7 +55,7 @@ export interface CartItem {
   modifiers: CartModifier[];
 }
 
-/** Sent to API — prices resolved server-side from Clover. */
+/** Sent to API — prices resolved server-side from the menu catalog. */
 export interface CartLineInput {
   itemId: string;
   quantity: number;
@@ -74,22 +76,14 @@ export interface CheckoutTotals {
   total: number;
 }
 
-export interface PlaceOrderPayload {
-  items: CartLineInput[];
-  sourceToken: string;
-  idempotencyKey: string;
-  customerName?: string;
-  customerEmail?: string;
-  customerPhone?: string;
-  pickupNote?: string;
-}
-
 export interface PaymentConfig {
+  provider: "stripe";
+  publishableKey: string | null;
+  ready: boolean;
+  /** @deprecated use `ready` */
   demo: boolean;
   sandbox: boolean;
-  merchantId: string | null;
-  pakmsPublicKey: string | null;
-  sdkUrl: string;
+  /** @deprecated use `ready` */
   iframeReady: boolean;
 }
 
@@ -149,20 +143,10 @@ export async function checkoutOrder(payload: {
   });
 }
 
-export async function placeOrder(payload: PlaceOrderPayload): Promise<{
-  success: boolean;
-  order: { id: string; cloverOrderId: string | null; status: string; totalCents: number };
-}> {
-  return fetchApi("/orders", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
 export interface OrderRecord {
   id: string;
   cloverOrderId: string | null;
-  cloverChargeId: string | null;
+  stripePaymentIntentId?: string | null;
   status: string;
   totalCents: number;
   subtotalCents: number;

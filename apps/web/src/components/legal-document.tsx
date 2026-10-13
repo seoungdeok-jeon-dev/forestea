@@ -18,7 +18,7 @@ export function LegalDocument({
         <p className="text-xs font-medium uppercase tracking-[0.28em] text-ink-muted">
           {eyebrow}
         </p>
-        <h1 className="font-display mt-3 text-4xl text-ink md:text-5xl">
+        <h1 className="font-display mt-3 text-3xl text-ink sm:text-4xl md:text-5xl">
           {title}
         </h1>
         <p className="mt-4 text-sm text-ink-muted">
@@ -26,7 +26,7 @@ export function LegalDocument({
         </p>
       </header>
 
-      <article className="space-y-10 py-10 text-[15px] leading-7 text-ink-soft">
+      <article className="space-y-10 break-words py-10 text-[15px] leading-7 text-ink-soft">
         {children}
       </article>
 
@@ -72,7 +72,7 @@ export function LegalTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-line">
-      <table className="w-full border-collapse text-left text-sm">
+      <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
         <thead>
           <tr className="bg-subtle">
             {headers.map((header) => (

@@ -52,7 +52,7 @@ export function CartSummary() {
                     quantity: Math.max(1, item.quantity - 1),
                   })
                 }
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-subtle"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-subtle"
                 aria-label="Decrease quantity"
               >
                 −
@@ -68,21 +68,21 @@ export function CartSummary() {
                     quantity: item.quantity + 1,
                   })
                 }
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-subtle"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-subtle"
                 aria-label="Increase quantity"
               >
                 +
               </button>
               <Link
                 href={`/menu/${item.itemId}?edit=${item.lineId}&from=cart`}
-                className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-subtle"
+                className="inline-flex min-h-[40px] items-center rounded-full border border-line px-4 text-sm font-medium text-ink hover:bg-subtle"
               >
                 Edit
               </Link>
               <button
                 type="button"
                 onClick={() => removeLine(item.lineId)}
-                className="text-xs text-bark-600 hover:underline"
+                className="inline-flex min-h-[40px] items-center px-2 text-sm text-bark-600 hover:underline"
               >
                 Remove
               </button>

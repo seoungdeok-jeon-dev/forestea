@@ -1,51 +1,66 @@
-import type { Post } from "@/lib/posts";
 import Link from "next/link";
 
-const TYPE_LABEL: Record<string, string> = {
-  NEW_MENU: "New Menu",
-  ANNOUNCEMENT: "Announcement",
+export type PostCardData = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  coverImage: string | null;
+  typeLabel: string;
+  dateLabel: string | null;
 };
 
-export function PostCard({ post }: { post: Post }) {
+interface Props {
+  post: PostCardData;
+  revealDelayMs?: number;
+}
+
+export function PostCard({ post, revealDelayMs = 0 }: Props) {
   return (
-    <Link
-      href={`/news/${post.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-card transition-shadow hover:shadow-lg"
+    <article
+      data-reveal
+      style={{ transitionDelay: `${revealDelayMs}ms` }}
+      className="reveal-card group"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-subtle">
-        {post.coverImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={post.coverImage}
-            alt={post.title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+      <Link
+        href={`/news/${post.slug}`}
+        className="block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+      >
+        <div className="relative aspect-[3/4] overflow-hidden rounded-[1.25rem] bg-forest-950">
+          {post.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={post.coverImage}
+              alt=""
+              className="reveal-media h-full w-full object-cover transition-transform duration-[850ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.035]"
+            />
+          ) : (
+            <div className="reveal-media flex h-full w-full items-center justify-center bg-gradient-to-br from-forest-800 to-forest-950">
+              <span className="font-display text-2xl text-cream-50/35">F</span>
+            </div>
+          )}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-forest-950/45 to-transparent opacity-80"
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-4xl">
-            🌿
-          </div>
-        )}
-        <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink">
-          {TYPE_LABEL[post.type] ?? post.type}
-        </span>
-      </div>
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="font-display text-xl text-ink transition-colors group-hover:text-accent">
-          {post.title}
-        </h3>
-        {post.excerpt && (
-          <p className="mt-2 line-clamp-2 text-sm text-ink-soft">{post.excerpt}</p>
-        )}
-        {post.publishedAt && (
-          <p className="mt-3 text-xs text-ink-muted">
-            {new Date(post.publishedAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+        </div>
+
+        <div className="mt-4">
+          <p className="text-[0.7rem] font-medium tracking-[0.14em] text-ink-muted">
+            {post.dateLabel
+              ? `${post.typeLabel} · ${post.dateLabel}`
+              : post.typeLabel}
           </p>
-        )}
-      </div>
-    </Link>
+          <h3 className="font-display mt-1.5 text-[1.05rem] leading-[1.2] tracking-[-0.025em] text-ink transition-colors duration-300 group-hover:text-forest-700 sm:text-[1.15rem]">
+            {post.title}
+          </h3>
+          {post.excerpt ? (
+            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-soft">
+              {post.excerpt}
+            </p>
+          ) : null}
+        </div>
+      </Link>
+    </article>
   );
 }

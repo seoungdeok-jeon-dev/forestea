@@ -7,7 +7,7 @@ export default async function CheckoutPage() {
   const session = await auth();
 
   return (
-    <div className="mx-auto w-full min-h-[calc(100svh-5rem)] max-w-5xl px-6 pt-12 pb-8 md:pt-16">
+    <div className="mx-auto w-full min-h-[calc(100svh-5rem)] max-w-5xl px-5 pt-12 pb-8 sm:px-6 md:pt-16">
       <header className="mb-10">
         <p className="text-xs font-medium uppercase tracking-[0.28em] text-ink-muted">
           Checkout

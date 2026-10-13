@@ -1,16 +1,17 @@
 # Forestea
 
-Forest-themed café website — monorepo with **web**, **api**, and **db**, integrated with **Clover** for menu sync, orders, and payments.
+Forest-themed café website — monorepo with **web**, **api**, and **db**. Menu is managed in-app; payments use **Stripe**.
 
 ## Structure
 
 ```
 forestea/
 ├── apps/
-│   ├── api/     # Fastify REST API (Clover + Prisma)
+│   ├── api/     # Fastify REST API (Stripe + Prisma)
 │   └── web/     # Next.js storefront
 ├── packages/
-│   ├── clover/  # Clover Platform & Ecommerce client
+│   ├── menu/    # Shared drink catalog + pricing
+│   ├── clover/  # Legacy Clover client (optional)
 │   └── db/      # Prisma + PostgreSQL
 └── docker-compose.yml
 ```
@@ -21,8 +22,11 @@ forestea/
 
 ```bash
 docker compose up -d
-cp apps/api/.env.example apps/api/.env    # DATABASE_URL + Clover
-cp apps/web/.env.example apps/web/.env.local   # NEXT_PUBLIC_*
+# Local secrets (gitignored):
+#   apps/api/.env.local
+#   apps/web/.env.local
+# Production values live only on Railway / Vercel dashboards.
+# See apps/api/.env.production and apps/web/.env.production for key checklists.
 ```
 
 ### 2. Install & migrate
@@ -33,7 +37,19 @@ pnpm db:generate
 pnpm db:push
 ```
 
-### 3. Run dev servers
+### 3. Stripe keys
+
+In [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/test/apikeys), copy the **test** keys into `apps/api/.env.local`:
+
+```bash
+STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_PUBLISHABLE_KEY="pk_test_..."
+TAX_RATE="0.101"
+```
+
+Restart the API after changing keys. Card testing: `4242 4242 4242 4242`, any future expiry, any CVC.
+
+### 4. Run dev servers
 
 ```bash
 pnpm dev
@@ -42,9 +58,9 @@ pnpm dev
 - Web: http://localhost:3000 (scroll story) · http://localhost:3000/menu  
 - API: http://localhost:4000  
 
-## Clover OAuth v2 (recommended)
+## Legacy Clover (optional)
 
-Dynamic tokens (`access_token`, `refresh_token`) are stored in PostgreSQL (`clover_auth` table), **not** in `.env`.
+Clover OAuth routes remain for older tooling, but the storefront menu and checkout no longer use Clover.
 
 | Variable | Description |
 |----------|-------------|

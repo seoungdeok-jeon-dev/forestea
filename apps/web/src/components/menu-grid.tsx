@@ -1,23 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatPrice, type MenuCategory, type MenuItem } from "@/lib/api";
-import { FavoriteButton } from "@/components/favorite-button";
+import { type MenuCategory, type MenuItem } from "@/lib/api";
+import { MenuItemCard, useRevealOnScroll } from "@/components/menu-item-card";
 
 interface MenuGridProps {
   categories: MenuCategory[];
   items: MenuItem[];
-}
-
-function iconFor(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes("coffee")) return "☕";
-  if (n.includes("tea")) return "🍵";
-  if (n.includes("pastry") || n.includes("bakery")) return "🥐";
-  if (n.includes("cake") || n.includes("dessert")) return "🍰";
-  if (n.includes("ice")) return "🍦";
-  return "🌿";
 }
 
 export function MenuGrid({ categories, items }: MenuGridProps) {
@@ -33,6 +22,9 @@ export function MenuGrid({ categories, items }: MenuGridProps) {
 
   const [activeId, setActiveId] = useState<string>("");
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useRevealOnScroll(gridRef, [sections.length]);
 
   useEffect(() => {
     if (sections.length === 0) return;
@@ -69,10 +61,12 @@ export function MenuGrid({ categories, items }: MenuGridProps) {
   }
 
   return (
-    <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-12">
-      {/* Sidebar / category nav */}
-      <nav className="sticky top-[4.5rem] z-30 -mx-6 mb-8 bg-surface/90 px-6 py-3 backdrop-blur-md lg:top-24 lg:mx-0 lg:mb-0 lg:self-start lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
-        <ul className="scrollbar-none flex gap-2 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible">
+    <div className="lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:items-start lg:gap-16 xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-20">
+      <nav className="sticky top-14 z-30 -mx-5 mb-10 border-b border-black/5 bg-white px-5 py-3 sm:top-16 sm:-mx-8 sm:px-8 lg:mx-0 lg:mb-0 lg:border-0 lg:px-0 lg:py-1">
+        <p className="mb-3 hidden text-[0.65rem] font-medium tracking-[0.2em] text-ink-muted lg:block">
+          Categories
+        </p>
+        <ul className="scrollbar-none flex gap-1 overflow-x-auto lg:flex-col lg:gap-0.5 lg:overflow-visible">
           {sections.map(({ category }) => {
             const active = category.id === activeId;
             return (
@@ -84,18 +78,12 @@ export function MenuGrid({ categories, items }: MenuGridProps) {
                     scrollTo(category.id);
                   }}
                   aria-current={active ? "location" : undefined}
-                  className={`block w-full whitespace-nowrap rounded-full px-4 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:rounded-lg ${
+                  className={`block whitespace-nowrap px-3 py-2.5 text-sm tracking-[-0.01em] transition-colors lg:px-0 ${
                     active
-                      ? "bg-subtle text-ink lg:bg-transparent lg:font-semibold"
-                      : "text-ink-muted hover:text-ink lg:hover:bg-subtle"
+                      ? "font-semibold text-ink"
+                      : "text-ink-muted hover:text-ink"
                   }`}
                 >
-                  <span
-                    className={`hidden lg:mr-2 lg:inline-block lg:h-4 lg:w-1 lg:rounded-full lg:align-middle ${
-                      active ? "lg:bg-accent" : "lg:bg-transparent"
-                    }`}
-                    aria-hidden
-                  />
                   {category.name}
                 </a>
               </li>
@@ -104,46 +92,33 @@ export function MenuGrid({ categories, items }: MenuGridProps) {
         </ul>
       </nav>
 
-      {/* Sections */}
-      <div className="space-y-16">
-        {sections.map(({ category, items: catItems }) => (
+      <div ref={gridRef} className="space-y-16 md:space-y-20">
+        {sections.map(({ category, items: catItems }, sectionIndex) => (
           <section
             key={category.id}
             id={category.id}
             ref={(el) => {
               sectionRefs.current[category.id] = el;
             }}
-            className="scroll-mt-28"
+            className="scroll-mt-28 lg:scroll-mt-32"
           >
-            <h2 className="font-display mb-7 border-b border-line pb-4 text-2xl text-ink md:text-3xl">
-              {category.name}
-            </h2>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-x-8 gap-y-7">
-              {catItems.map((item) => (
-                <div key={item.id} className="group relative flex items-center gap-5">
-                  <Link
-                    href={`/menu/${item.id}`}
-                    className="flex flex-1 items-center gap-5"
-                  >
-                    <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-subtle text-3xl ring-1 ring-line transition-transform duration-300 group-hover:scale-105">
-                      {iconFor(category.name)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium text-ink transition-colors group-hover:text-accent">
-                        {item.name}
-                      </span>
-                      {item.description ? (
-                        <span className="mt-0.5 block truncate text-sm text-ink-muted">
-                          {item.description}
-                        </span>
-                      ) : null}
-                      <span className="mt-1 block text-sm font-medium text-ink-soft">
-                        {formatPrice(item.price)}
-                      </span>
-                    </span>
-                  </Link>
-                  <FavoriteButton itemId={item.id} className="shrink-0" />
-                </div>
+            <div className="mb-7 flex items-end justify-between gap-4 border-b border-line/70 pb-4 md:mb-9">
+              <h2 className="font-display text-[1.65rem] tracking-[-0.03em] text-ink md:text-[2rem]">
+                {category.name}
+              </h2>
+              <span className="pb-1 text-xs tabular-nums tracking-wide text-ink-muted">
+                {catItems.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-9 sm:gap-x-5 sm:gap-y-11 md:grid-cols-3 xl:grid-cols-3 xl:gap-x-7 xl:gap-y-12">
+              {catItems.map((item, itemIndex) => (
+                <MenuItemCard
+                  key={item.id}
+                  item={item}
+                  revealDelayMs={(itemIndex % 3) * 60}
+                  priority={sectionIndex === 0 && itemIndex < 3}
+                />
               ))}
             </div>
           </section>

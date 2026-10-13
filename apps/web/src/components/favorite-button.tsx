@@ -8,9 +8,12 @@ import { useState } from "react";
 export function FavoriteButton({
   itemId,
   className = "",
+  tone = "default",
 }: {
   itemId: string;
   className?: string;
+  /** `onImage` keeps the icon legible when it sits over menu photography. */
+  tone?: "default" | "onImage";
 }) {
   const { status } = useSession();
   const { isFavorite, toggle } = useFavorites();
@@ -38,10 +41,12 @@ export function FavoriteButton({
       disabled={busy}
       aria-pressed={favorited}
       aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
-      className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+      className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
         favorited
           ? "text-red-500"
-          : "text-ink-muted hover:text-red-400"
+          : tone === "onImage"
+            ? "text-cream-50/85 hover:text-red-300"
+            : "text-ink-muted hover:text-red-400"
       } ${className}`}
     >
       <svg

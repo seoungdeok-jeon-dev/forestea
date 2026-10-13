@@ -4,7 +4,19 @@ import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-export function AccountMenu() {
+interface AccountMenuProps {
+  /**
+   * "dropdown" is the desktop header popover. "inline" renders the same
+   * destinations as a flat, tappable list for the mobile nav panel.
+   */
+  variant?: "dropdown" | "inline";
+  onNavigate?: () => void;
+}
+
+export function AccountMenu({
+  variant = "dropdown",
+  onNavigate,
+}: AccountMenuProps = {}) {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -17,41 +29,102 @@ export function AccountMenu() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  const label = session?.user
+    ? (session.user.name ?? session.user.email ?? "Account")
+    : null;
+  const isAdmin = session?.user?.role === "ADMIN";
+
+  if (variant === "inline") {
+    if (status === "loading") {
+      return <span className="mx-3 block h-5 w-24 animate-pulse rounded bg-subtle" />;
+    }
+
+    if (!session?.user) {
+      return (
+        <Link href="/login" onClick={onNavigate} className={inlineItemClass}>
+          Log in
+        </Link>
+      );
+    }
+
+    return (
+      <>
+        <p className="truncate px-3 pb-1 pt-2 text-xs uppercase tracking-[0.16em] text-ink-muted">
+          {label}
+        </p>
+        <Link
+          href="/account/favorites"
+          onClick={onNavigate}
+          className={inlineItemClass}
+        >
+          Favorites
+        </Link>
+        <Link
+          href="/account/orders"
+          onClick={onNavigate}
+          className={inlineItemClass}
+        >
+          Previous orders
+        </Link>
+        {isAdmin && (
+          <>
+            <Link href="/admin/posts" onClick={onNavigate} className={inlineItemClass}>
+              Manage posts
+            </Link>
+            <Link
+              href="/admin/setting"
+              onClick={onNavigate}
+              className={inlineItemClass}
+            >
+              Settings
+            </Link>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            void signOut({ callbackUrl: "/" });
+          }}
+          className={`${inlineItemClass} w-full text-left text-red-700`}
+        >
+          Log out
+        </button>
+      </>
+    );
+  }
+
   if (status === "loading") {
     return <span className="h-8 w-8 animate-pulse rounded-full bg-subtle" />;
   }
 
   if (!session?.user) {
     return (
-      <Link href="/login" className="transition-colors hover:text-ink">
+      <Link
+        href="/login"
+        className="text-[0.8rem] font-medium tracking-[0.04em] text-ink/70 transition-colors hover:text-ink"
+      >
         Log in
       </Link>
     );
   }
-
-  const label = session.user.name ?? session.user.email ?? "Account";
-  const initial = label.charAt(0).toUpperCase();
-  const isAdmin = session.user.role === "ADMIN";
 
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-line bg-card px-2 py-1.5 text-ink transition-colors hover:bg-subtle"
+        className="text-[0.8rem] font-medium tracking-[0.04em] text-ink/70 transition-colors hover:text-ink"
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-on-accent">
-          {initial}
-        </span>
-        <span className="hidden max-w-[8rem] truncate text-sm sm:inline">{label}</span>
+        Account
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border border-line bg-card py-1 shadow-lg"
+          className="absolute right-0 mt-3 w-48 overflow-hidden rounded-lg border border-black/8 bg-white py-1 shadow-sm"
         >
           <MenuLink href="/account/favorites" onClick={() => setOpen(false)}>
             Favorites
@@ -66,7 +139,7 @@ export function AccountMenu() {
                 Manage posts
               </MenuLink>
               <MenuLink href="/admin/setting" onClick={() => setOpen(false)}>
-                Clover settings
+                Settings
               </MenuLink>
             </>
           )}
@@ -75,7 +148,7 @@ export function AccountMenu() {
             type="button"
             role="menuitem"
             onClick={() => void signOut({ callbackUrl: "/" })}
-            className="block w-full px-4 py-2 text-left text-sm text-red-700 transition-colors hover:bg-subtle"
+            className="block w-full px-4 py-2.5 text-left text-sm text-red-700 transition-colors hover:bg-subtle"
           >
             Log out
           </button>
@@ -84,6 +157,9 @@ export function AccountMenu() {
     </div>
   );
 }
+
+const inlineItemClass =
+  "flex min-h-[44px] items-center rounded-xl px-3 text-[15px] font-medium text-ink transition-colors hover:bg-subtle";
 
 function MenuLink({
   href,
@@ -99,7 +175,7 @@ function MenuLink({
       href={href}
       role="menuitem"
       onClick={onClick}
-      className="block px-4 py-2 text-sm text-ink transition-colors hover:bg-subtle"
+      className="block px-4 py-2.5 text-sm text-ink transition-colors hover:bg-subtle"
     >
       {children}
     </Link>

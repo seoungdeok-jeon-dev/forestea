@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@forestea/db"],
+  transpilePackages: ["@forestea/db", "@forestea/menu"],
   outputFileTracingIncludes: {
     "/**": [
       "./node_modules/.pnpm/**/.prisma/client/**/*",

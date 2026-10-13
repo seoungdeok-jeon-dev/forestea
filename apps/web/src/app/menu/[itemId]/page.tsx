@@ -1,5 +1,5 @@
 import { ItemConfigurator } from "@/components/item-configurator";
-import { getMenuItem } from "@/lib/api";
+import { getMenuItemDetail } from "@forestea/menu";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -13,19 +13,16 @@ export default async function MenuItemPage({ params, searchParams }: PageProps) 
   const { itemId } = await params;
   const { edit, from } = await searchParams;
 
-  const item = await getMenuItem(itemId).catch(() => undefined);
-
+  const item = getMenuItemDetail(itemId);
   if (!item) notFound();
 
   const returnTo = from === "cart" ? "/checkout" : undefined;
 
   return (
-    <div className="px-6 py-12 md:py-20">
-      <ItemConfigurator
-        item={item}
-        editLineId={edit}
-        returnTo={returnTo}
-      />
-    </div>
+    <ItemConfigurator
+      item={item}
+      editLineId={edit}
+      returnTo={returnTo}
+    />
   );
 }

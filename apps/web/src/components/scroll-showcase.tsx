@@ -6,28 +6,30 @@ import { useEffect, useRef, useState } from "react";
 
 const SLIDES = [
   {
-    src: "/images/hero/pic1.png",
-    eyebrow: "Forestea",
-    title: "Beneath the canopy",
-    body: "A calm, forest-inspired space for coffee, tea, and slow mornings.",
+    src: "/images/posters/1.png",
+    brand: true,
+    title: "Forestea",
+    body: "Coffee, boba, tea & dessert — made to linger.",
   },
   {
-    src: "/images/hero/pic2.png",
-    eyebrow: "Our story",
-    title: "Rooted in craft",
-    body: "Warm wood, stone, and light — designed for unhurried conversation.",
+    src: "/images/posters/3.png",
+    title: "Premium Thai Milk Tea",
+    body: "Bold, creamy, and poured over ice.",
   },
   {
-    src: "/images/hero/pic3.png",
-    eyebrow: "Espresso bar",
-    title: "Precision in every pull",
-    body: "Professional equipment and carefully sourced beans, dialed in daily.",
+    src: "/images/posters/5.png",
+    title: "Ube Jasmine Milk Tea",
+    body: "Purple swirl, jasmine tea, poured over ice.",
   },
   {
-    src: "/images/hero/pic4.png",
-    eyebrow: "Pick up",
-    title: "Order ahead",
-    body: "Skip the line. Customize your drink and collect it when it is ready.",
+    src: "/images/posters/7.png",
+    title: "Bagel Sandwich",
+    body: "Cream cheese, scallion, and smoked salmon.",
+  },
+  {
+    src: "/images/posters/9.png",
+    title: "Matcha Collection",
+    body: "Double, jasmine, strawberry, and coconut.",
   },
 ] as const;
 
@@ -52,7 +54,7 @@ export function ScrollShowcase() {
           }
         }
       },
-      { root, threshold: 0.6 },
+      { root, threshold: 0.55 },
     );
 
     panels.forEach((p) => observer.observe(p));
@@ -71,106 +73,98 @@ export function ScrollShowcase() {
   return (
     <div
       ref={rootRef}
-      className="scroll-showcase relative -mx-[max(0px,calc((100vw-100%)/2))] h-svh snap-y snap-mandatory overflow-y-auto overscroll-y-contain bg-forest-950"
+      className="scroll-showcase relative h-[calc(100svh-3.5rem)] snap-y snap-mandatory overflow-y-auto overscroll-y-contain bg-forest-950 sm:h-[calc(100svh-4rem)]"
     >
-      {/* Fixed brand mark */}
-      <div
-        className={`pointer-events-none fixed left-1/2 top-7 z-30 -translate-x-1/2 transition-colors duration-500 ${
-          onImageSlide ? "text-cream-50" : "text-ink"
-        }`}
-      >
-        <span className="font-display text-sm tracking-[0.4em] uppercase">
-          Forestea
-        </span>
-      </div>
-
-      {/* Side dot navigation */}
-      <div className="pointer-events-none fixed right-5 top-1/2 z-30 hidden -translate-y-1/2 flex-col items-center gap-3 md:flex">
+      <div className="pointer-events-none fixed right-6 top-1/2 z-30 hidden -translate-y-1/2 flex-col items-center gap-3.5 md:flex">
         {[...SLIDES, { src: "cta" }].map((_, i) => (
           <button
             key={i}
             type="button"
             aria-label={`Go to section ${i + 1}`}
             onClick={() => scrollToPanel(i)}
-            className={`pointer-events-auto h-2 w-2 rounded-full transition-all duration-300 ${
+            className={`pointer-events-auto h-1.5 w-1.5 rounded-full transition-all duration-300 ${
               active === i
-                ? `${onImageSlide ? "bg-cream-50" : "bg-accent"} scale-150`
+                ? `${onImageSlide ? "bg-white" : "bg-ink"} scale-[1.7]`
                 : onImageSlide
-                  ? "bg-cream-50/40 hover:bg-cream-50/70"
-                  : "bg-ink/25 hover:bg-ink/50"
+                  ? "bg-white/35 hover:bg-white/70"
+                  : "bg-ink/20 hover:bg-ink/45"
             }`}
           />
         ))}
       </div>
 
-      {SLIDES.map((slide, index) => (
-        <section
-          key={slide.src}
-          data-panel={index}
-          className="scroll-showcase-panel relative flex min-h-[100svh] snap-start snap-always items-center justify-center overflow-hidden bg-forest-950"
-        >
-          <div className="absolute inset-0">
-            <Image
-              src={slide.src}
-              alt=""
-              fill
-              priority={index === 0}
-              className="scroll-showcase-img object-cover object-center"
-              sizes="100vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-forest-950/85 via-forest-950/25 to-forest-950/45" />
-          </div>
-
-          <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center px-6 text-center">
-            <p className="text-[11px] font-medium uppercase tracking-[0.34em] text-moss-200/90">
-              {slide.eyebrow}
-            </p>
-            <h2 className="font-display mt-4 text-5xl leading-[1.05] text-cream-50 md:text-7xl">
-              {slide.title}
-            </h2>
-            <p className="mt-5 max-w-md text-base leading-relaxed text-cream-50/80 md:text-lg">
-              {slide.body}
-            </p>
-          </div>
-
-          {index === 0 ? (
-            <div className="absolute bottom-10 left-1/2 z-10 -translate-x-1/2 text-cream-50/70">
-              <span className="scroll-showcase-hint block h-9 w-[1.5px] bg-cream-50/50" />
+      {SLIDES.map((slide, index) => {
+        const isBrand = "brand" in slide && slide.brand;
+        return (
+          <section
+            key={slide.src}
+            data-panel={index}
+            className="scroll-showcase-panel relative flex h-[calc(100svh-3.5rem)] snap-start snap-always items-end overflow-hidden bg-forest-950 sm:h-[calc(100svh-4rem)] sm:items-center"
+          >
+            <div className="absolute inset-0">
+              <Image
+                src={slide.src}
+                alt=""
+                fill
+                priority={index === 0}
+                className="scroll-showcase-img object-cover object-center"
+                sizes="100vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-forest-950 via-forest-950/35 to-forest-950/20 sm:bg-gradient-to-r sm:from-forest-950/80 sm:via-forest-950/25 sm:to-transparent" />
             </div>
-          ) : null}
-        </section>
-      ))}
+
+            <div className="relative z-10 mx-auto w-full max-w-[1440px] px-6 pb-20 pt-16 sm:px-10 sm:pb-0">
+              <div className="max-w-xl">
+                {isBrand ? (
+                  <h1 className="font-display text-[clamp(3.5rem,12vw,7.5rem)] leading-[0.92] tracking-[-0.03em] text-white">
+                    {slide.title}
+                  </h1>
+                ) : (
+                  <h2 className="font-display text-[clamp(2.75rem,8vw,5.5rem)] leading-[0.98] tracking-[-0.025em] text-white">
+                    {slide.title}
+                  </h2>
+                )}
+                <p className="mt-5 max-w-sm text-base leading-relaxed text-white/78 sm:text-lg">
+                  {slide.body}
+                </p>
+                {isBrand ? (
+                  <Link
+                    href="/menu"
+                    className="mt-9 inline-flex min-h-[48px] items-center rounded-full bg-white px-7 text-sm font-semibold text-ink transition hover:bg-white/90"
+                  >
+                    Order ahead
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+
+            {index === 0 ? (
+              <div className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-white/55">
+                <span className="scroll-showcase-hint block h-10 w-px bg-white/60" />
+              </div>
+            ) : null}
+          </section>
+        );
+      })}
 
       <section
         data-panel={SLIDES.length}
-        className="scroll-showcase-panel relative flex min-h-[100svh] snap-start snap-always flex-col items-center justify-center bg-surface px-6 text-center"
+        className="scroll-showcase-panel relative flex h-[calc(100svh-3.5rem)] snap-start snap-always flex-col items-center justify-center bg-white px-6 text-center sm:h-[calc(100svh-4rem)]"
       >
-        <p className="text-[11px] font-medium uppercase tracking-[0.34em] text-ink-muted">
-          Ready when you are
-        </p>
-        <h2 className="font-display mt-5 text-5xl text-ink md:text-7xl">
-          Taste the forest
+        <h2 className="font-display text-[clamp(2.75rem,8vw,5rem)] leading-[0.98] tracking-[-0.03em] text-ink">
+          Your table is ready
         </h2>
-        <p className="mx-auto mt-5 max-w-md text-ink-soft md:text-lg">
-          Browse our menu, tailor every detail to your taste, and pay with ease.
+        <p className="mx-auto mt-5 max-w-sm text-base leading-relaxed text-ink-soft sm:text-lg">
+          Browse coffee, matcha, bingsu, and more — then pick up in store.
         </p>
-        <div className="mt-12 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/menu"
-            className="rounded-full bg-accent px-10 py-4 text-sm font-semibold text-on-accent shadow-lg shadow-forest-900/10 transition hover:bg-accent-hover active:scale-[0.98]"
-          >
-            View menu
-          </Link>
-          <Link
-            href="/checkout"
-            className="rounded-full border border-line px-10 py-4 text-sm font-semibold text-ink transition hover:border-accent hover:bg-subtle"
-          >
-            Go to cart
-          </Link>
-        </div>
-
-        <p className="mt-16 text-xs text-ink-muted">
-          15127 Main St E, Ste 102, Sumner, WA 98390 · Open daily 10:30am–9pm
+        <Link
+          href="/menu"
+          className="mt-10 inline-flex min-h-[48px] items-center rounded-full bg-ink px-9 text-sm font-semibold text-white transition hover:bg-ink/85"
+        >
+          View menu
+        </Link>
+        <p className="mt-16 text-xs tracking-wide text-ink-muted">
+          Sumner, WA · Daily 10:30am–9pm
         </p>
       </section>
     </div>

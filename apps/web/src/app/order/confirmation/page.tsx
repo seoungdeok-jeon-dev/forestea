@@ -42,14 +42,16 @@ export default async function ConfirmationPage({
         <div className="mt-8 rounded-2xl border border-line bg-card p-6 text-left text-sm text-ink">
           <p>
             <span className="text-ink-soft">Order ID:</span>{" "}
-            <span className="font-mono">{order.id}</span>
+            <span className="font-mono break-all">{order.id}</span>
           </p>
-          {order.cloverOrderId && (
+          {order.stripePaymentIntentId ? (
             <p className="mt-2">
-              <span className="text-ink-soft">Clover order:</span>{" "}
-              <span className="font-mono">{order.cloverOrderId}</span>
+              <span className="text-ink-soft">Payment:</span>{" "}
+              <span className="font-mono break-all">
+                {order.stripePaymentIntentId}
+              </span>
             </p>
-          )}
+          ) : null}
           <p className="mt-2">
             <span className="text-ink-soft">Status:</span> {order.status}
           </p>

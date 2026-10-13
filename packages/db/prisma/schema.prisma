@@ -26,6 +26,8 @@ model Order {
   idempotencyKey  String?     @unique @map("idempotency_key")
   cloverOrderId   String?     @unique
   cloverChargeId  String?     @unique
+  /// Stripe PaymentIntent id (pi_…)
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id")
   status          OrderStatus @default(PENDING)
   userId          String?     @map("user_id")
   user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)

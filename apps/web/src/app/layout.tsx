@@ -1,22 +1,34 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { Fraunces, Outfit } from "next/font/google";
 import { CartProvider } from "@/context/cart-context";
 import { ProgressProvider } from "@/context/progress-context";
 import { Header } from "@/components/header";
+import { SiteFooter } from "@/components/site-footer";
 import { AuthSessionProvider } from "@/components/session-provider";
 import { FavoritesProvider } from "@/context/favorites-context";
 import "./globals.css";
 
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+});
+
+const sans = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+});
+
 export const metadata: Metadata = {
-  title: "Forestea — Forest Café",
-  description: "Order coffee, tea, and pastries. Powered by Clover.",
+  title: "Forestea",
+  description: "Forest café & tea house — order ahead for pickup.",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
         <Suspense fallback={null}>
           <AuthSessionProvider>
@@ -25,28 +37,7 @@ export default function RootLayout({
                 <CartProvider>
                   <Header />
                   <main className="flex flex-1 flex-col">{children}</main>
-                  <footer className="border-t border-forest-800/10 bg-forest-900 py-12 text-center text-sm text-moss-200">
-                    <p className="font-display text-lg text-cream-50">Forestea</p>
-                    <p className="mt-2">
-                      15127 Main St E, Ste 102, Sumner, WA 98390 · Open daily
-                      10:30am–9pm
-                    </p>
-                    <p className="mt-4 flex items-center justify-center gap-4 text-xs text-moss-200/80">
-                      <a
-                        href="/privacy"
-                        className="transition hover:text-cream-50"
-                      >
-                        Privacy Policy
-                      </a>
-                      <span aria-hidden="true">·</span>
-                      <a
-                        href="/terms"
-                        className="transition hover:text-cream-50"
-                      >
-                        Terms of Service
-                      </a>
-                    </p>
-                  </footer>
+                  <SiteFooter />
                 </CartProvider>
               </ProgressProvider>
             </FavoritesProvider>
