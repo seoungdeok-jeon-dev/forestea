@@ -560,9 +560,9 @@ export default function PrivacyPage() {
         <p>
           Forestea
           <br />
-          15127 Main St E, Ste 102
+          33304 Pacific Hwy S
           <br />
-          Sumner, WA 98390, United States
+          Federal Way, WA 98003, United States
           <br />
           Phone:{" "}
           <a className="underline hover:text-ink" href="tel:+14255307909">

@@ -147,8 +147,8 @@ export default function TermsPage() {
 
       <LegalSection title="6. Customer orders, pickup, and payments">
         <p>
-          Online orders are for in-store pickup at 15127 Main St E, Ste 102,
-          Sumner, WA 98390, unless we clearly state otherwise. Menu items,
+          Online orders are for in-store pickup at 33304 Pacific Hwy S,
+          Federal Way, WA 98003, unless we clearly state otherwise. Menu items,
           prices, taxes, availability, and modifiers may change and are sourced
           from Clover inventory where connected.
         </p>
@@ -463,9 +463,9 @@ export default function TermsPage() {
         <p>
           Forestea
           <br />
-          15127 Main St E, Ste 102
+          33304 Pacific Hwy S
           <br />
-          Sumner, WA 98390, United States
+          Federal Way, WA 98003, United States
           <br />
           Phone:{" "}
           <a className="underline hover:text-ink" href="tel:+14255307909">

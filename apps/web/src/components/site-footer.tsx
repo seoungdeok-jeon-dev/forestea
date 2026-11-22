@@ -11,7 +11,7 @@ export function SiteFooter() {
     <footer className="border-t border-black/5 bg-white px-6 py-12 text-center text-sm text-ink-muted">
       <p className="font-display text-lg tracking-[-0.02em] text-ink">Forestea</p>
       <p className="mx-auto mt-3 max-w-sm leading-relaxed">
-        15127 Main St E, Ste 102, Sumner, WA 98390
+        33304 Pacific Hwy S, Federal Way, WA 98003
         <br />
         Open daily 10:30am–9pm
       </p>

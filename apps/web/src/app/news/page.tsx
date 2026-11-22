@@ -18,7 +18,7 @@ export default async function NewsPage() {
           News
         </h1>
         <p className="mt-5 max-w-md text-[1.05rem] leading-relaxed text-ink-soft">
-          New drinks, seasonal specials, and quiet notes from Sumner.
+          New drinks, seasonal specials, and quiet notes from Federal Way.
         </p>
       </header>
 

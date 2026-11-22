@@ -61,7 +61,7 @@ export function HomeLanding() {
 
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-[1440px] flex-col justify-end px-5 pb-14 pt-24 sm:min-h-[calc(100svh-4rem)] sm:px-8 sm:pb-20 md:justify-center md:pb-24">
           <p className="home-hero-copy text-[0.7rem] font-medium tracking-[0.22em] text-white/65">
-            SUMNER, WA
+            FEDERAL WAY, WA
           </p>
           <h1 className="home-hero-copy home-hero-title font-display mt-4 max-w-[11ch] text-[clamp(3.75rem,13vw,8rem)] leading-[0.88] tracking-[-0.04em] text-white">
             Forestea
@@ -138,7 +138,7 @@ export function HomeLanding() {
             Browse the menu
           </Link>
           <p className="mt-16 text-[0.7rem] tracking-[0.16em] text-white/45">
-            15127 MAIN ST E · SUMNER · DAILY 10:30–21:00
+            33304 PACIFIC HWY S · FEDERAL WAY · DAILY 10:30–21:00
           </p>
         </div>
       </section>
