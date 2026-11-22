@@ -4,30 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 
-const MOMENTS = [
-  {
-    src: "/images/hero/pic1.png",
-    href: "/menu",
-    label: "The café",
-    caption: "Light wood, quiet seats",
-    position: "object-center",
-  },
-  {
-    src: "/images/hero/pic2.png",
-    href: "/menu",
-    label: "Under the canopy",
-    caption: "Greens and soft glow",
-    position: "object-[center_35%]",
-  },
-  {
-    src: "/images/home/forest-cafe.jpg",
-    href: "/menu",
-    label: "Forest light",
-    caption: "Trees just outside",
-    position: "object-center",
-  },
-] as const;
-
 export function HomeLanding() {
   const heroRef = useRef<HTMLElement>(null);
 
@@ -83,41 +59,6 @@ export function HomeLanding() {
               What’s new
             </Link>
           </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 md:py-28">
-        <div className="mb-10 flex items-end justify-between gap-6 md:mb-14">
-          <h2 className="font-display text-[clamp(2rem,4.5vw,3.25rem)] leading-[0.95] tracking-[-0.035em] text-ink">
-            Inside the forest
-          </h2>
-          <Link
-            href="/menu"
-            className="hidden text-[0.8rem] font-medium tracking-[0.06em] text-ink/55 transition hover:text-ink sm:inline"
-          >
-            Full menu →
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-5 md:gap-7">
-          {MOMENTS.map((moment) => (
-            <Link key={moment.src} href={moment.href} className="group block">
-              <div className="relative aspect-[4/5] overflow-hidden bg-forest-950">
-                <Image
-                  src={moment.src}
-                  alt=""
-                  fill
-                  quality={90}
-                  sizes="(min-width: 640px) 30vw, 92vw"
-                  className={`object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.035] ${moment.position}`}
-                />
-              </div>
-              <p className="mt-4 font-display text-[1.15rem] tracking-[-0.025em] text-ink">
-                {moment.label}
-              </p>
-              <p className="mt-1 text-sm text-ink-muted">{moment.caption}</p>
-            </Link>
-          ))}
         </div>
       </section>
 
