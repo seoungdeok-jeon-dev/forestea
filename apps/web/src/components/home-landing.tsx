@@ -79,7 +79,7 @@ export function HomeLanding() {
             Browse the menu
           </Link>
           <p className="mt-16 text-[0.7rem] tracking-[0.16em] text-white/45">
-            33304 PACIFIC HWY S · FEDERAL WAY · DAILY 10:30–21:00
+            33304 PACIFIC HWY S · FEDERAL WAY · DAILY 10:30–21:30
           </p>
         </div>
       </section>

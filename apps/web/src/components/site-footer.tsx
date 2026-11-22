@@ -13,7 +13,7 @@ export function SiteFooter() {
       <p className="mx-auto mt-3 max-w-sm leading-relaxed">
         33304 Pacific Hwy S, Federal Way, WA 98003
         <br />
-        Open daily 10:30am–9pm
+        Open daily 10:30am–9:30pm
       </p>
       <p className="mt-5 flex items-center justify-center gap-5 text-xs tracking-wide">
         <Link href="/privacy" className="transition hover:text-ink">
